@@ -32,7 +32,7 @@ jobs:
       - name: Write credentials file
         uses: DamianReeves/write-file-action@v1.0
         with:
-          path: ${{env.home}}/.pub-cache/credentials.json
+          path: ~/.pub-cache/credentials.json
           contents: |
             echo "{"
             echo "\"accessToken\":\"${{ secrets.OAUTH_ACCESS_TOKEN }}\",
