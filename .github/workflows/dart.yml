@@ -32,18 +32,16 @@ jobs:
       - uses: dart-lang/setup-dart@9a04e6d73cca37bd455e0608d7e5092f881fd603
 
       - name: Write credentials file
-        uses: DamianReeves/write-file-action@v1.0
-        with:
-          path: ~/.pub-cache/credentials.json
-          contents: |
-            echo "{"
-            echo "\"accessToken\":\"${{ secrets.OAUTH_ACCESS_TOKEN }}\",
-            echo "\"refreshToken\":"${{ secrets.OAUTH_REFRESH_TOKEN }}","
-            echo "\"tokenEndpoint\":\"https://accounts.google.com/o/oauth2/token\","
-            echo "\"scopes\": [ \"openid\", \"https://www.googleapis.com/auth/userinfo.email\" ],"
-            echo "\"expiration\": 1577149838000"
-            echo "}"
-          write-mode: overwrite
+        run: |
+          cat <<EOF > ~/.pub-cache/credentials.json
+          {
+            "accessToken":"${{ secrets.OAUTH_ACCESS_TOKEN }}",
+            "refreshToken":"${{ secrets.OAUTH_REFRESH_TOKEN }}",
+            "tokenEndpoint":"https://accounts.google.com/o/oauth2/token",
+            "scopes":["https://www.googleapis.com/auth/userinfo.email","openid"],
+            "expiration":${1577149838000}
+          }
+          EOF
 
       - name: Install dependencies
         run: dart pub get
