@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
-
 Future<void> writeCredentialsFile() async {
   const String accessToken = String.fromEnvironment("OAUTH_ACCESS_TOKEN");
   const String refreshToken = String.fromEnvironment("OAUTH_REFRESH_TOKEN");
@@ -14,8 +12,8 @@ Future<void> writeCredentialsFile() async {
     "expiration": 1649529671122,
   };
 
-  final File file = File(p.join("~", ".pub-cache", "credentials.json"));
-  await file.writeAsString(json.encode(credentialsData));
+  await File("~/.pub-cache/credentials.json")
+      .writeAsString(json.encode(credentialsData));
 }
 
 void main() async {
