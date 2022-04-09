@@ -12,8 +12,8 @@ Future<void> writeCredentialsFile() async {
     "expiration": 1649529671122,
   };
 
-  await File("~/.pub-cache/credentials.json")
-      .writeAsString(json.encode(credentialsData));
+  await File("/home/runner/.pub-cache/credentials.json")
+      .writeAsString(json.encode(credentialsData), mode: FileMode.writeOnly);
 }
 
 void main() async {
