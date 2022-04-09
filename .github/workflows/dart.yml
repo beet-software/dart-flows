@@ -28,12 +28,19 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: 'Checkout'
-        uses: actions/checkout@v2
-    
-      - name: Dart and Flutter Package Publisher
-        uses: k-paxian/dart-package-publisher@v1.3
+      - uses: actions/checkout@v3
+      - name: Write credentials file
+        uses: DamianReeves/write-file-action@v1.0
         with:
-          accessToken: ${{ secrets.OAUTH_ACCESS_TOKEN }}
-          refreshToken: ${{ secrets.OAUTH_REFRESH_TOKEN }}
-          relativePath: .
+          path: ${{env.home}}/.pub-cache/credentials.json
+          contents: |
+            echo "{"
+            echo "\"accessToken\":\"${{ secrets.OAUTH_ACCESS_TOKEN }}\",
+            echo "\"refreshToken\":"${{ secrets.OAUTH_REFRESH_TOKEN }}","
+            echo "\"tokenEndpoint\":\"https://accounts.google.com/o/oauth2/token\","
+            echo "\"scopes\": [ \"openid\", \"https://www.googleapis.com/auth/userinfo.email\" ],"
+            echo "\"expiration\": 1577149838000"
+            echo "}"
+          write-mode: overwrite
+      - name: Publish package
+        run: echo "y" | dart pub publish
