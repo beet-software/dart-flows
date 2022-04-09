@@ -28,7 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
       - name: Write credentials file
         uses: DamianReeves/write-file-action@v1.0
         with:
@@ -43,4 +42,4 @@ jobs:
             echo "}"
           write-mode: overwrite
       - name: Publish package
-        run: echo "y" | dart pub publish
+        run: dart pub publish
