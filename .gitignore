@@ -50,7 +50,7 @@ doc/api/
 *.class
 
 # Generated files
-bin/
+!bin/build.dart
 gen/
 out/
 
