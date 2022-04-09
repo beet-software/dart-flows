@@ -28,6 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - uses: actions/checkout@v3
+      - uses: dart-lang/setup-dart@9a04e6d73cca37bd455e0608d7e5092f881fd603
+
       - name: Write credentials file
         uses: DamianReeves/write-file-action@v1.0
         with:
@@ -41,5 +44,9 @@ jobs:
             echo "\"expiration\": 1577149838000"
             echo "}"
           write-mode: overwrite
+
+      - name: Install dependencies
+        run: dart pub get
+
       - name: Publish package
         run: dart pub publish
