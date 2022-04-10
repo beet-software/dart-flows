@@ -2,7 +2,7 @@ name: Dart
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, workflow-setup ]
   pull_request:
     branches: [ main ]
 
@@ -13,40 +13,34 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dart-lang/setup-dart@9a04e6d73cca37bd455e0608d7e5092f881fd603
-      
+
       - name: Install dependencies
         run: dart pub get
 
       - name: Analyze project source
         run: dart analyze
 
-      - name: Run tests
-        run: dart test
-  
-  deploy:
+  coverage:
     needs: build
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
       - uses: dart-lang/setup-dart@9a04e6d73cca37bd455e0608d7e5092f881fd603
 
-      - name: Write credentials file
-        uses: DamianReeves/write-file-action@v1.0
-        with:
-          path: ~/.pub-cache/credentials.json
-          contents: |
-            echo "{"
-            echo "\"accessToken\":\"${{ secrets.OAUTH_ACCESS_TOKEN }}\",
-            echo "\"refreshToken\":"${{ secrets.OAUTH_REFRESH_TOKEN }}","
-            echo "\"tokenEndpoint\":\"https://accounts.google.com/o/oauth2/token\","
-            echo "\"scopes\": [ \"openid\", \"https://www.googleapis.com/auth/userinfo.email\" ],"
-            echo "\"expiration\": 1577149838000"
-            echo "}"
-          write-mode: overwrite
-
       - name: Install dependencies
         run: dart pub get
 
-      - name: Publish package
-        run: echo "y" | dart pub publish
+      - name: Run test with coverage
+        run: dart run test --coverage=coverage
+
+      - name: Generate LCOV file
+        run: dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.packages --report-on=lib
+
+      - name: Download Codecov uploader
+        run: curl -Os https://uploader.codecov.io/latest/linux/codecov
+
+      - name: Run Codecov uploader
+        run: |
+          chmod +x codecov
+          ./codecov -f coverage/lcov.info
