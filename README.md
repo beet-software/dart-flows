@@ -248,7 +248,28 @@ Note that:
 If we used any of the two methods above (`Stream#asyncExpand` and `Stream#addStream`), we would not
 be able to detect the "School" to "High School" change if `listenStudents` were an infinite stream.
 
+
 ## Usage
+
+To use the library, add to your *pubspec.yaml* the following lines:
+
+```yaml
+dependencies:
+  # ...
+  flows:
+    git:
+      url: https://github:com/beet-software/dart-flows
+```
+
+Finally, run the following in the command line:
+
+```shell script
+dart pub get
+
+# or, if you're using flutter
+flutter pub get
+```
+
 
 ### Definitions
 
