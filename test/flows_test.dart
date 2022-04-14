@@ -1,10 +1,32 @@
 import 'dart:async';
 
 import 'package:flows/flows.dart';
+import 'package:flows/src/models/done_completer.dart';
 import 'package:test/test.dart';
 
 class _ValueStorage<T> {
   T? value;
+}
+
+Future<void> pump() => Future.delayed(Duration.zero);
+
+enum FutureCompletion { none, success, error }
+
+class MockDoneCompleter implements DoneCompleter {
+  final DoneCompleter _completer = DoneCompleter();
+
+  @override
+  Future<void> rootDone() async {
+    _completer.rootDone();
+  }
+
+  @override
+  Future<void> childDone() async {
+    _completer.childDone();
+  }
+
+  @override
+  Future<void> get future => _completer.future;
 }
 
 void main() {
@@ -37,11 +59,11 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value, isNull);
 
       inner.add("V1");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 1);
       expect(storage.value?.child, "V1");
     });
@@ -49,11 +71,11 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value, isNull);
 
       inner.add("V1");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 1);
       expect(storage.value?.child, "V1");
 
@@ -61,13 +83,13 @@ void main() {
       inner = StreamController();
 
       outer.add(2);
-      await Future.delayed(Duration.zero);
+      await pump();
 
       expect(storage.value?.root, 1);
       expect(storage.value?.child, "V1");
 
       inner.add("V2");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 2);
       expect(storage.value?.child, "V2");
     });
@@ -75,16 +97,16 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value, isNull);
 
       inner.add("V1");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 1);
       expect(storage.value?.child, "V1");
 
       inner.add("V2");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 1);
       expect(storage.value?.child, "V2");
     });
@@ -118,12 +140,12 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 1);
       expect(storage.value?.child, const AsyncSnapshot.waiting());
 
       inner.add("V1");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 1);
       expect(storage.value?.child, const AsyncSnapshot.data("V1"));
     });
@@ -131,12 +153,12 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 1);
       expect(storage.value?.child, const AsyncSnapshot.waiting());
 
       inner.add("V1");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 1);
       expect(storage.value?.child, const AsyncSnapshot.data("V1"));
 
@@ -144,13 +166,13 @@ void main() {
       inner = StreamController();
 
       outer.add(2);
-      await Future.delayed(Duration.zero);
+      await pump();
 
       expect(storage.value?.root, 2);
       expect(storage.value?.child, const AsyncSnapshot.waiting());
 
       inner.add("V2");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 2);
       expect(storage.value?.child, const AsyncSnapshot.data("V2"));
     });
@@ -158,17 +180,17 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 1);
       expect(storage.value?.child, const AsyncSnapshot.waiting());
 
       inner.add("V1");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 1);
       expect(storage.value?.child, const AsyncSnapshot.data("V1"));
 
       inner.add("V2");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.root, 1);
       expect(storage.value?.child, const AsyncSnapshot.data("V2"));
     });
@@ -202,12 +224,12 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value, isNull);
 
       for (int i = 0; i < 3; i++) {
         inners[i].add("V${i + 1}");
-        await Future.delayed(Duration.zero);
+        await pump();
         expect(storage.value, i < 2 ? isNull : isNotNull);
       }
       expect(storage.value?.parent, 1);
@@ -217,12 +239,12 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value, isNull);
 
       for (int i = 0; i < 2; i++) {
         inners[i].add("V${i + 1}");
-        await Future.delayed(Duration.zero);
+        await pump();
         expect(storage.value, isNull);
       }
 
@@ -230,12 +252,12 @@ void main() {
       inners = List.generate(3, (_) => StreamController());
 
       outer.add(2);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value, isNull);
 
       for (int i = 0; i < 3; i++) {
         inners[i].add("V${i + 4}");
-        await Future.delayed(Duration.zero);
+        await pump();
         expect(storage.value, i < 2 ? isNull : isNotNull);
       }
       expect(storage.value?.parent, 2);
@@ -245,19 +267,19 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value, isNull);
 
       for (int i = 0; i < 3; i++) {
         inners[i].add("V${i + 1}");
-        await Future.delayed(Duration.zero);
+        await pump();
         expect(storage.value, i < 2 ? isNull : isNotNull);
       }
       expect(storage.value?.parent, 1);
       expect(storage.value?.children, equals(["V1", "V2", "V3"]));
 
       inners[1].add("V4");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(storage.value?.children, equals(["V1", "V4", "V3"]));
     });
@@ -291,7 +313,7 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(
         storage.value?.children,
@@ -299,21 +321,21 @@ void main() {
       );
 
       inners[0].add("V1");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V1"));
       expect(storage.value?.children[1], const AsyncSnapshot.waiting());
       expect(storage.value?.children[2], const AsyncSnapshot.waiting());
 
       inners[1].add("V2");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V1"));
       expect(storage.value?.children[1], const AsyncSnapshot.data("V2"));
       expect(storage.value?.children[2], const AsyncSnapshot.waiting());
 
       inners[2].add("V3");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V1"));
       expect(storage.value?.children[1], const AsyncSnapshot.data("V2"));
@@ -323,7 +345,7 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(
         storage.value?.children,
@@ -331,14 +353,14 @@ void main() {
       );
 
       inners[0].add("V1");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V1"));
       expect(storage.value?.children[1], const AsyncSnapshot.waiting());
       expect(storage.value?.children[2], const AsyncSnapshot.waiting());
 
       inners[1].add("V2");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V1"));
       expect(storage.value?.children[1], const AsyncSnapshot.data("V2"));
@@ -348,7 +370,7 @@ void main() {
       inners = List.generate(3, (i) => StreamController());
 
       outer.add(2);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 2);
       expect(
         storage.value?.children,
@@ -356,21 +378,21 @@ void main() {
       );
 
       inners[0].add("V3");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 2);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V3"));
       expect(storage.value?.children[1], const AsyncSnapshot.waiting());
       expect(storage.value?.children[2], const AsyncSnapshot.waiting());
 
       inners[1].add("V4");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 2);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V3"));
       expect(storage.value?.children[1], const AsyncSnapshot.data("V4"));
       expect(storage.value?.children[2], const AsyncSnapshot.waiting());
 
       inners[2].add("V5");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 2);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V3"));
       expect(storage.value?.children[1], const AsyncSnapshot.data("V4"));
@@ -380,38 +402,85 @@ void main() {
       expect(storage.value, isNull);
 
       outer.add(1);
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(storage.value?.children,
           everyElement(equals(const AsyncSnapshot.waiting())));
 
       inners[0].add("V1");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V1"));
       expect(storage.value?.children[1], const AsyncSnapshot.waiting());
       expect(storage.value?.children[2], const AsyncSnapshot.waiting());
 
       inners[1].add("V2");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V1"));
       expect(storage.value?.children[1], const AsyncSnapshot.data("V2"));
       expect(storage.value?.children[2], const AsyncSnapshot.waiting());
 
       inners[2].add("V3");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V1"));
       expect(storage.value?.children[1], const AsyncSnapshot.data("V2"));
       expect(storage.value?.children[2], const AsyncSnapshot.data("V3"));
 
       inners[1].add("V4");
-      await Future.delayed(Duration.zero);
+      await pump();
       expect(storage.value?.parent, 1);
       expect(storage.value?.children[0], const AsyncSnapshot.data("V1"));
       expect(storage.value?.children[1], const AsyncSnapshot.data("V4"));
       expect(storage.value?.children[2], const AsyncSnapshot.data("V3"));
+    });
+  });
+  group('DoneCompleter', () {
+    late MockDoneCompleter completer;
+    late FutureCompletion status;
+    setUp(() {
+      completer = MockDoneCompleter();
+
+      status = FutureCompletion.none;
+      completer.future
+          .then((_) => status = FutureCompletion.success)
+          .catchError((_) => status = FutureCompletion.error);
+    });
+
+    test('calling rootDone before childDone should complete', () async {
+      expect(status, FutureCompletion.none);
+      await completer.rootDone();
+      expect(status, FutureCompletion.none);
+      await completer.childDone();
+      expect(status, FutureCompletion.success);
+    });
+    test('calling rootDone multiple times should not raise errors', () async {
+      expect(status, FutureCompletion.none);
+      await completer.rootDone();
+      expect(status, FutureCompletion.none);
+      await completer.rootDone();
+      expect(status, FutureCompletion.none);
+      await completer.childDone();
+      expect(status, FutureCompletion.success);
+    });
+    test('calling childDone multiple times should not raise errors', () async {
+      expect(status, FutureCompletion.none);
+      await completer.childDone();
+      expect(status, FutureCompletion.none);
+      await completer.rootDone();
+      expect(status, FutureCompletion.none);
+      await completer.childDone();
+      expect(status, FutureCompletion.success);
+    });
+    test('calling childDone after complete should not raise errors', () async {
+      expect(status, FutureCompletion.none);
+      await completer.rootDone();
+      expect(status, FutureCompletion.none);
+      await completer.childDone();
+      expect(status, FutureCompletion.success);
+      await completer.childDone();
+      expect(status, FutureCompletion.success);
     });
   });
 }
