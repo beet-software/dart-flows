@@ -3,3 +3,8 @@
 - Add documentation
 - Add flows: SequenceFlow, OneToOneFlow, OneToManyFlow
 - Add models: AsyncSnapshot, ValueConsumer
+
+## 0.2.0
+
+- Add flows: ManyToManyFlow
+ 
