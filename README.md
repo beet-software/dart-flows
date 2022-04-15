@@ -231,11 +231,11 @@ The output displayed is:
 
 ```none
 start
-[1] value: OneToManyValue([School{id: #001, name: School}]{Student{id: E001, schoolId: #001, name: John}, Student{id: E002, schoolId: #001, name: Paul}, Student{id: E003, schoolId: #001, name: George Harrison}})
-[2] value: OneToManyValue([School{id: #001, name: School}]{Student{id: E001, schoolId: #001, name: John Lennon}, Student{id: E002, schoolId: #001, name: Paul}, Student{id: E003, schoolId: #001, name: George Harrison}})
-[3] value: OneToManyValue([School{id: #001, name: High School}]{Student{id: E001, schoolId: #001, name: John}, Student{id: E002, schoolId: #001, name: Paul}, Student{id: E003, schoolId: #001, name: George Harrison}})
-[4] value: OneToManyValue([School{id: #001, name: High School}]{Student{id: E001, schoolId: #001, name: John Lennon}, Student{id: E002, schoolId: #001, name: Paul}, Student{id: E003, schoolId: #001, name: George Harrison}})
-[5] value: OneToManyValue([School{id: #001, name: High School}]{Student{id: E001, schoolId: #001, name: John Lennon}, Student{id: E002, schoolId: #001, name: Paul McCartney}, Student{id: E003, schoolId: #001, name: George Harrison}})
+value: OneToManyValue([School{id: #001, name: School}]{Student{id: E001, schoolId: #001, name: John}, Student{id: E002, schoolId: #001, name: Paul}, Student{id: E003, schoolId: #001, name: George Harrison}})
+value: OneToManyValue([School{id: #001, name: School}]{Student{id: E001, schoolId: #001, name: John Lennon}, Student{id: E002, schoolId: #001, name: Paul}, Student{id: E003, schoolId: #001, name: George Harrison}})
+value: OneToManyValue([School{id: #001, name: High School}]{Student{id: E001, schoolId: #001, name: John}, Student{id: E002, schoolId: #001, name: Paul}, Student{id: E003, schoolId: #001, name: George Harrison}})
+value: OneToManyValue([School{id: #001, name: High School}]{Student{id: E001, schoolId: #001, name: John Lennon}, Student{id: E002, schoolId: #001, name: Paul}, Student{id: E003, schoolId: #001, name: George Harrison}})
+value: OneToManyValue([School{id: #001, name: High School}]{Student{id: E001, schoolId: #001, name: John Lennon}, Student{id: E002, schoolId: #001, name: Paul McCartney}, Student{id: E003, schoolId: #001, name: George Harrison}})
 end
 ```
 
@@ -280,9 +280,9 @@ flutter pub get
 - An **emitted event** is an **event** that a `Stream<T>` has already provided.
 - A **flow** is a specific scope based on one or more streams.
 - A **value** is an element that a **flow** can provide.
-- A **supplied value** is an **value** that a **Flow** has already provided.
-- A **lazy flow** is a flow that supplies its values only when all values in this scope are ready.
-- An **eager flow** is a flow that supplies its values as soon as possible, even if not all of them are ready.
+- A **supplied value** is a **value** that a **flow** has already provided.
+- A **lazy flow** is a **flow** that supplies its values only when all values in this scope are available.
+- An **eager flow** is a **flow** that supplies its values as soon as possible, even if not all of them are available.
 
 Let's suppose a flow depends on a list of 3 streams (S1, S2 and S3), supplying a list of 3 values 
 (V1, V2 and V3), where the value at position *i* contains the current event emitted by the stream at
@@ -303,11 +303,12 @@ values, respectively: `AsyncSnapshot.data(E1)`,  `AsyncSnapshot.data(E2)` and `A
 
 ### Producing
 
-There are three flows provided by this library:
+There are four flows provided by this library:
 
 - `SequenceFlow<T>`, which keeps track of the current emitted events from a sequence of streams;
-- `OneToOneFlow<T, R>`, which listens to two streams (a parent and its child);
-- `OneToManyFlow<T, R>`, which listens to two or more streams (a parent and its children);
+- `OneToOneFlow<T, R>`, which listens to two streams (parent and its child);
+- `OneToManyFlow<T, R>`, which listens to two or more streams (parent and its children);
+- `ManyToManyFlow<T, R>`, which listen to two or more streams (parents and their children);
 
 When a flow is created, you can start it using the `Flow#start` method. This will execute the flow
 and return a `FlowState`. This state has two main methods: 
@@ -320,6 +321,7 @@ To create a custom flow, extend the `Flow` class and return its respective `Flow
 `Flow#start` method. Note that instantiating a `Flow` is cheap, while instantiating a `FlowState` is not.
 Ideally, a `Flow` subclass should be immutable and a `FlowState` mutable. Think of a 
 [`Widget`-`Element` relationship](https://docs.flutter.dev/resources/inside-flutter#sublinear-widget-building).
+
 
 ### Consuming
 

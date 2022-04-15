@@ -1,6 +1,6 @@
 name: flows
 description: Provides a new scope for streams, handling special cases such as infinite streams.
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/beet-software/dart-flows
 
 environment:
