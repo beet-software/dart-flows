@@ -6,6 +6,8 @@ import '../models/value_consumer.dart';
 import 'flow.dart';
 import 'sequence.dart';
 
+part 'many_to_many.dart';
+
 /// Stores a [parent] with its [children].
 class OneToManyValue<T, R> {
   /// Represents the left side in a 1:N relationship.
@@ -151,13 +153,7 @@ class OneToManyFlow<T, R> extends Flow {
       stream: stream,
       mapping: mapping,
       flowBuilder: (root, streams, flowConsumer) {
-        return SequenceFlow.eager(
-          streams,
-          consumer: ValueConsumer.lambda((children) {
-            consumer.apply(OneToManyValue._(parent: root, children: children));
-            flowConsumer.apply(children);
-          }),
-        );
+        return SequenceFlow.eager(streams, consumer: flowConsumer);
       },
       callback: _OneToManyFlowCallback(
         onRoot: (root, length) {
@@ -215,6 +211,7 @@ class _State<T, R> extends FlowState {
   late final StreamSubscription<void> _subscription;
   FlowState? _nestedFlow;
 
+  Future<void>? _doneFuture;
   final DoneCompleter _done = DoneCompleter();
 
   _State({
@@ -225,18 +222,21 @@ class _State<T, R> extends FlowState {
   }) {
     _subscription = stream.listen(
       (event) async {
+        await _nestedFlow?.dispose();
+        _doneFuture?.ignore();
+
         final List<Stream<R>> nestedStreams = mapping(event);
         callback?.onRoot(event, nestedStreams.length);
 
-        await _nestedFlow?.dispose();
-        _nestedFlow = flowBuilder(
+        final FlowState flow = flowBuilder(
           event,
           nestedStreams,
           ValueConsumer.lambda(
-            (nestedEvents) => callback?.onChildren(event, nestedEvents),
+            (snapshots) => callback?.onChildren(event, snapshots),
           ),
         ).start();
-        _nestedFlow?.wait().then((_) => _done.childDone());
+        _nestedFlow = flow;
+        _doneFuture = flow.wait().then((_) => _done.childDone());
       },
       onDone: () => _done.rootDone(),
     );
@@ -249,5 +249,6 @@ class _State<T, R> extends FlowState {
   Future<void> dispose() async {
     await _subscription.cancel();
     await _nestedFlow?.dispose();
+    _doneFuture?.ignore();
   }
 }
