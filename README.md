@@ -1,6 +1,6 @@
 # flows
 
-[![actions](https://github.com/beet-software/dart-flows/actions/workflows/dart/badge.svg)](https://github.com/beet-software/dart-flows)
+[![actions](https://github.com/beet-software/dart-flows/actions/workflows/dart.yml/badge.svg)](https://github.com/beet-software/dart-flows)
 [![codecov](https://codecov.io/gh/beet-software/dart-flows/branch/main/graph/badge.svg?token=0JYWDIIDM8)](https://codecov.io/gh/beet-software/dart-flows)
 
 A library that provides a new scope for infinite streams.
