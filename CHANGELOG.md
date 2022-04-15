@@ -8,3 +8,6 @@
 
 - Add flows: ManyToManyFlow
  
+## 0.2.1
+
+- Fix flow: ManyToManyFlow (change list of streams to stream of list)

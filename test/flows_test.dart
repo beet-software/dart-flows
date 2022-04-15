@@ -438,16 +438,16 @@ void main() {
   });
   group('N:N flow (lazy)', () {
     void expectStorage(
-      ManyToManyValue<int, String> value,
+      ManyToManyValue<int, List<String>> value,
       Map<int, List<String>> results,
     ) {
       assert(value.length == results.length);
       final int length = value.length;
       for (int i = 0; i < length; i++) {
-        final OneToManyValue<int, String> actual = value[i];
-        final List<String?> expected = results[actual.parent]!;
-        for (int j = 0; j < actual.children.length; j++) {
-          final String nestedActual = actual.children[j];
+        final OneToOneValue<int, List<String>> actual = value[i];
+        final List<String?> expected = results[actual.root]!;
+        for (int j = 0; j < actual.child.length; j++) {
+          final String nestedActual = actual.child[j];
           final String? nestedExpected = expected[j];
           expect(nestedActual, nestedExpected);
         }
@@ -455,8 +455,8 @@ void main() {
     }
 
     late StreamController<List<int>> outer;
-    late Map<int, List<StreamController<String>>> inners;
-    late _ValueStorage<ManyToManyValue<int, String>> storage;
+    late Map<int, StreamController<List<String>>> inners;
+    late _ValueStorage<ManyToManyValue<int, List<String>>> storage;
     late FlowState flow;
 
     setUp(() {
@@ -466,21 +466,19 @@ void main() {
       flow = ManyToManyFlow<int, String>.lazy(
         outer.stream,
         mapping: (event) {
-          final List<StreamController<String>>? controllers = inners[event];
-          if (controllers == null) {
-            throw StateError("inners does not contain the respective "
-                "children for $event");
+          final StreamController<List<String>>? controller = inners[event];
+          if (controller == null) {
+            throw StateError(
+                "inners does not contain the respective child for $event");
           }
-          return controllers.map((controller) => controller.stream).toList();
+          return controller.stream;
         },
         consumer: ValueConsumer.lambda((value) => storage.value = value),
       ).start();
     });
     tearDown(() async {
       await outer.close();
-      for (List<StreamController> controllers in inners.values) {
-        await Future.wait(controllers.map((controller) => controller.close()));
-      }
+      await Future.wait(inners.values.map((controller) => controller.close()));
       storage.value = null;
       await flow.dispose();
     });
@@ -490,33 +488,20 @@ void main() {
 
       outer.add([1, 2, 3]);
       inners = {
-        for (int value in [1, 2, 3])
-          value: List.generate(2, (_) => StreamController())
+        for (int value in [1, 2, 3]) value: StreamController()
       };
       await pump();
       expect(storage.value, isNull);
 
-      inners[1]![0].add("a");
+      inners[1]!.add(["a", "b"]);
       await pump();
       expect(storage.value, isNull);
 
-      inners[2]![0].add("c");
+      inners[2]!.add(["c", "d"]);
       await pump();
       expect(storage.value, isNull);
 
-      inners[3]![0].add("e");
-      await pump();
-      expect(storage.value, isNull);
-
-      inners[3]![1].add("f");
-      await pump();
-      expect(storage.value, isNull);
-
-      inners[2]![1].add("d");
-      await pump();
-      expect(storage.value, isNull);
-
-      inners[1]![1].add("b");
+      inners[3]!.add(["e", "f"]);
       await pump();
       expectStorage(storage.value!, {
         1: ["a", "b"],
@@ -529,32 +514,28 @@ void main() {
 
       outer.add([1, 2, 3]);
       inners = {
-        for (int value in [1, 2, 3])
-          value: List.generate(2, (_) => StreamController())
+        for (int value in [1, 2, 3]) value: StreamController()
       };
       await pump();
       expect(storage.value, isNull);
 
-      inners[1]![0].add("a");
+      inners[1]!.add(["a", "b"]);
       await pump();
       expect(storage.value, isNull);
 
-      inners[3]![1].add("b");
+      inners[3]!.add(["e", "f"]);
       await pump();
       expect(storage.value, isNull);
 
-      for (List<StreamController> controllers in inners.values) {
-        await Future.wait(controllers.map((controller) => controller.close()));
-      }
+      await Future.wait(inners.values.map((controller) => controller.close()));
       inners = {
-        for (int value in [4, 5, 6])
-          value: List.generate(2, (_) => StreamController())
+        for (int value in [4, 5, 6]) value: StreamController()
       };
       outer.add([4, 5, 6]);
       await pump();
       expect(storage.value, isNull);
 
-      inners[5]![0].add("c");
+      inners[5]!.add(["c", "d"]);
       await pump();
       expect(storage.value, isNull);
     });
@@ -563,33 +544,20 @@ void main() {
 
       outer.add([1, 2, 3]);
       inners = {
-        for (int value in [1, 2, 3])
-          value: List.generate(2, (_) => StreamController())
+        for (int value in [1, 2, 3]) value: StreamController()
       };
       await pump();
       expect(storage.value, isNull);
 
-      inners[1]![0].add("a");
+      inners[1]!.add(["a", "b"]);
       await pump();
       expect(storage.value, isNull);
 
-      inners[2]![0].add("c");
+      inners[2]!.add(["c", "d"]);
       await pump();
       expect(storage.value, isNull);
 
-      inners[3]![0].add("e");
-      await pump();
-      expect(storage.value, isNull);
-
-      inners[3]![1].add("f");
-      await pump();
-      expect(storage.value, isNull);
-
-      inners[2]![1].add("d");
-      await pump();
-      expect(storage.value, isNull);
-
-      inners[1]![1].add("b");
+      inners[3]!.add(["e", "f"]);
       await pump();
       expectStorage(storage.value!, {
         1: ["a", "b"],
@@ -597,40 +565,42 @@ void main() {
         3: ["e", "f"]
       });
 
-      inners[1]![0].add("g");
+      inners[2]!.add(["g", "h"]);
       await pump();
       expectStorage(storage.value!, {
-        1: ["g", "b"],
-        2: ["c", "d"],
+        1: ["a", "b"],
+        2: ["g", "h"],
         3: ["e", "f"]
       });
     });
   });
   group('N:N flow (eager)', () {
     void expectStorage(
-      ManyToManyValue<int, AsyncSnapshot<String>> value,
-      Map<int, List<String?>> results,
+      ManyToManyValue<int, AsyncSnapshot<List<String>>> value,
+      Map<int, List<String>?> results,
     ) {
       assert(value.length == results.length);
       final int length = value.length;
       for (int i = 0; i < length; i++) {
-        final OneToManyValue<int, AsyncSnapshot<String>> actual = value[i];
-        final List<String?> expected = results[actual.parent]!;
-        for (int j = 0; j < actual.children.length; j++) {
-          final String? nestedExpectedValue = expected[j];
-          final AsyncSnapshot<String> nestedActual = actual.children[j];
-          final AsyncSnapshot<String> nestedExpected =
-              nestedExpectedValue == null
-                  ? const AsyncSnapshot.waiting()
-                  : AsyncSnapshot.data(nestedExpectedValue);
-          expect(nestedActual, nestedExpected);
-        }
+        final OneToOneValue<int, AsyncSnapshot<List<String>>> actual = value[i];
+        final List<String>? expected = results[actual.root];
+        actual.child.choose(
+          onWaiting: () {},
+          onActive: (child) {
+            for (int j = 0; j < child.length; j++) {
+              final String nestedActual = child[j];
+              final String? nestedExpected = expected?[j];
+              expect(nestedActual, nestedExpected);
+            }
+          },
+        );
       }
     }
 
     late StreamController<List<int>> outer;
-    late Map<int, List<StreamController<String>>> inners;
-    late _ValueStorage<ManyToManyValue<int, AsyncSnapshot<String>>> storage;
+    late Map<int, StreamController<List<String>>> inners;
+    late _ValueStorage<ManyToManyValue<int, AsyncSnapshot<List<String>>>>
+        storage;
     late FlowState flow;
 
     setUp(() {
@@ -640,21 +610,19 @@ void main() {
       flow = ManyToManyFlow<int, String>.eager(
         outer.stream,
         mapping: (event) {
-          final List<StreamController<String>>? controllers = inners[event];
-          if (controllers == null) {
+          final StreamController<List<String>>? controller = inners[event];
+          if (controller == null) {
             throw StateError("inners does not contain the respective "
-                "children for $event");
+                "child for $event");
           }
-          return controllers.map((controller) => controller.stream).toList();
+          return controller.stream;
         },
         consumer: ValueConsumer.lambda((value) => storage.value = value),
       ).start();
     });
     tearDown(() async {
       await outer.close();
-      for (List<StreamController> controllers in inners.values) {
-        await Future.wait(controllers.map((controller) => controller.close()));
-      }
+      await Future.wait(inners.values.map((controller) => controller.close()));
       storage.value = null;
       await flow.dispose();
     });
@@ -664,57 +632,28 @@ void main() {
 
       outer.add([1, 2, 3]);
       inners = {
-        for (int value in [1, 2, 3])
-          value: List.generate(2, (_) => StreamController())
+        for (int value in [1, 2, 3]) value: StreamController()
       };
       await pump();
-      expectStorage(storage.value!, {
-        1: [null, null],
-        2: [null, null],
-        3: [null, null]
-      });
+      expectStorage(storage.value!, {1: null, 2: null, 3: null});
 
-      inners[1]![0].add("a");
+      inners[1]!.add(["a", "b"]);
       await pump();
       expectStorage(storage.value!, {
-        1: ["a", null],
-        2: [null, null],
-        3: [null, null]
+        1: ["a", "b"],
+        2: null,
+        3: null
       });
 
-      inners[2]![0].add("c");
+      inners[3]!.add(["e", "f"]);
       await pump();
       expectStorage(storage.value!, {
-        1: ["a", null],
-        2: ["c", null],
-        3: [null, null]
-      });
-
-      inners[3]![0].add("e");
-      await pump();
-      expectStorage(storage.value!, {
-        1: ["a", null],
-        2: ["c", null],
-        3: ["e", null]
-      });
-
-      inners[3]![1].add("f");
-      await pump();
-      expectStorage(storage.value!, {
-        1: ["a", null],
-        2: ["c", null],
+        1: ["a", "b"],
+        2: null,
         3: ["e", "f"]
       });
 
-      inners[2]![1].add("d");
-      await pump();
-      expectStorage(storage.value!, {
-        1: ["a", null],
-        2: ["c", "d"],
-        3: ["e", "f"]
-      });
-
-      inners[1]![1].add("b");
+      inners[2]!.add(["c", "d"]);
       await pump();
       expectStorage(storage.value!, {
         1: ["a", "b"],
@@ -727,111 +666,62 @@ void main() {
 
       outer.add([1, 2, 3]);
       inners = {
-        for (int value in [1, 2, 3])
-          value: List.generate(2, (_) => StreamController())
+        for (int value in [1, 2, 3]) value: StreamController()
       };
       await pump();
-      expectStorage(storage.value!, {
-        1: [null, null],
-        2: [null, null],
-        3: [null, null]
-      });
+      expectStorage(storage.value!, {1: null, 2: null, 3: null});
 
-      inners[1]![0].add("a");
+      inners[1]!.add(["a", "b"]);
       await pump();
       expectStorage(storage.value!, {
-        1: ["a", null],
-        2: [null, null],
-        3: [null, null]
+        1: ["a", "b"],
+        2: null,
+        3: null
       });
 
-      inners[3]![1].add("b");
+      inners[3]!.add(["e", "f"]);
       await pump();
       expectStorage(storage.value!, {
-        1: ["a", null],
-        2: [null, null],
-        3: [null, "b"]
+        1: ["a", "b"],
+        2: null,
+        3: ["e", "f"]
       });
 
-      for (List<StreamController> controllers in inners.values) {
-        await Future.wait(controllers.map((controller) => controller.close()));
-      }
+      await Future.wait(inners.values.map((controller) => controller.close()));
       inners = {
-        for (int value in [4, 5, 6])
-          value: List.generate(2, (_) => StreamController())
+        for (int value in [4, 5, 6]) value: StreamController()
       };
       outer.add([4, 5, 6]);
       await pump();
-      expectStorage(storage.value!, {
-        4: [null, null],
-        5: [null, null],
-        6: [null, null]
-      });
-
-      inners[5]![0].add("c");
-      await pump();
-      expectStorage(storage.value!, {
-        4: [null, null],
-        5: ["c", null],
-        6: [null, null],
-      });
+      expectStorage(storage.value!, {4: null, 5: null, 6: null});
     });
     test("Supply with same root if a dependent emits", () async {
       expect(storage.value, isNull);
 
       outer.add([1, 2, 3]);
       inners = {
-        for (int value in [1, 2, 3])
-          value: List.generate(2, (_) => StreamController())
+        for (int value in [1, 2, 3]) value: StreamController()
       };
       await pump();
-      expectStorage(storage.value!, {
-        1: [null, null],
-        2: [null, null],
-        3: [null, null]
-      });
+      expectStorage(storage.value!, {1: null, 2: null, 3: null});
 
-      inners[1]![0].add("a");
+      inners[1]!.add(["a", "b"]);
       await pump();
       expectStorage(storage.value!, {
-        1: ["a", null],
-        2: [null, null],
-        3: [null, null]
+        1: ["a", "b"],
+        2: null,
+        3: null
       });
 
-      inners[2]![0].add("c");
+      inners[3]!.add(["e", "f"]);
       await pump();
       expectStorage(storage.value!, {
-        1: ["a", null],
-        2: ["c", null],
-        3: [null, null]
-      });
-
-      inners[3]![0].add("e");
-      await pump();
-      expectStorage(storage.value!, {
-        1: ["a", null],
-        2: ["c", null],
-        3: ["e", null]
-      });
-
-      inners[3]![1].add("f");
-      await pump();
-      expectStorage(storage.value!, {
-        1: ["a", null],
-        2: ["c", null],
+        1: ["a", "b"],
+        2: null,
         3: ["e", "f"]
       });
 
-      inners[2]![1].add("d");
-      await pump();
-      expectStorage(storage.value!, {
-        1: ["a", null],
-        2: ["c", "d"],
-        3: ["e", "f"]
-      });
-
-      inners[1]![1].add("b");
+      inners[2]!.add(["c", "d"]);
       await pump();
       expectStorage(storage.value!, {
         1: ["a", "b"],
@@ -839,10 +729,10 @@ void main() {
         3: ["e", "f"]
       });
 
-      inners[1]![0].add("g");
+      inners[1]!.add(["g", "h"]);
       await pump();
       expectStorage(storage.value!, {
-        1: ["g", "b"],
+        1: ["g", "h"],
         2: ["c", "d"],
         3: ["e", "f"]
       });

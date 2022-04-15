@@ -4,6 +4,7 @@ import '../models/async_snapshot.dart';
 import '../models/done_completer.dart';
 import '../models/value_consumer.dart';
 import 'flow.dart';
+import 'one_to_one.dart';
 import 'sequence.dart';
 
 part 'many_to_many.dart';
