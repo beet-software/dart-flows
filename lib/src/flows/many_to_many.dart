@@ -54,9 +54,13 @@ class _ManyToManyFlowCallback<T, R> {
   final FutureOr<void> Function(List<T> roots, int index, List<R> children)
       onChildren;
 
+  final FutureOr<void> Function(P2CEventType type, Object error,
+      [StackTrace? stackTrace]) onError;
+
   const _ManyToManyFlowCallback({
     required this.onRoots,
     required this.onChildren,
+    required this.onError,
   });
 }
 
@@ -113,19 +117,14 @@ class ManyToManyFlow<T, R> extends Flow {
     Stream<List<T>> stream, {
     required Stream<List<R>> Function(T) mapping,
     required ValueConsumer<ManyToManyValue<T, AsyncSnapshot<List<R>>>> consumer,
+    ErrorConsumer<P2CEventType>? onError,
   }) {
     ManyToManyValue<T, AsyncSnapshot<List<R>>>? _value;
     return ManyToManyFlow._(
       stream: stream,
       mapping: mapping,
-      flowBuilder: (roots, i, streams, flowConsumer) {
-        return SequenceFlow<R>.eager(
-          streams,
-          consumer: ValueConsumer.lambda((children) {
-            flowConsumer.apply(children);
-          }),
-        );
-      },
+      flowBuilder: (roots, i, streams, flowConsumer) =>
+          SequenceFlow<R>.eager(streams, consumer: flowConsumer),
       callback: _ManyToManyFlowCallback(
         onRoots: (roots) {
           final ManyToManyValue<T, AsyncSnapshot<List<R>>> value = roots
@@ -144,6 +143,7 @@ class ManyToManyFlow<T, R> extends Flow {
           );
           consumer.apply(value);
         },
+        onError: (type, e, [s]) => onError?.emit(type, e, s),
       ),
     );
   }
@@ -174,44 +174,47 @@ class _ManyToManyState<T, R> extends FlowState {
   List<StreamSubscription<void>>? _nestedSubscriptions;
   List<bool>? _flags;
 
-  final DoneCompleter _completer = DoneCompleter();
+  final DoneCompleter _done = DoneCompleter();
 
   _ManyToManyState({
     required Stream<List<T>> stream,
     required Stream<List<R>> Function(T) mapping,
     _ManyToManyFlowCallback<T, R>? callback,
   }) {
-    _subscription = stream.listen((events) async {
-      // A new group of root events is being emitted
-      callback?.onRoots(events);
+    _subscription = stream.listen(
+      (events) async {
+        // A new group of root events is being emitted
+        callback?.onRoots(events);
 
-      // Stop listening to the previous group
-      await Future.wait(
-        _nestedSubscriptions?.map((subscription) => subscription.cancel()) ??
-            [],
-      );
-
-      // Start listening to the current group
-      _flags = events.map((_) => false).toList();
-      _nestedSubscriptions = List.generate(events.length, (i) {
-        final T event = events[i];
-        final Stream<List<R>> nestedStream = mapping(event);
-        return nestedStream.listen(
-          (snapshots) {
-            callback?.onChildren(events, i, snapshots);
-          },
-          onDone: () {
-            final List<bool> flags = _flags as List<bool>;
-            flags[i] = true;
-            if (flags.every((flag) => flag)) _completer.childDone();
-          },
+        // Stop listening to the previous group
+        await Future.wait(
+          _nestedSubscriptions?.map((subscription) => subscription.cancel()) ??
+              [],
         );
-      });
-    }, onDone: () => _completer.rootDone());
+
+        // Start listening to the current group
+        _flags = events.map((_) => false).toList();
+        _nestedSubscriptions = List.generate(events.length, (i) {
+          final T event = events[i];
+          final Stream<List<R>> nestedStream = mapping(event);
+          return nestedStream.listen(
+            (snapshots) => callback?.onChildren(events, i, snapshots),
+            onDone: () {
+              final List<bool> flags = _flags as List<bool>;
+              flags[i] = true;
+              if (flags.every((flag) => flag)) _done.emit(P2CEventType.child);
+            },
+            onError: (e, s) => callback?.onError(P2CEventType.child, e, s),
+          );
+        });
+      },
+      onDone: () => _done.emit(P2CEventType.root),
+      onError: (e, s) => callback?.onError(P2CEventType.root, e, s),
+    );
   }
 
   @override
-  Future<void> wait() => _completer.future;
+  Future<void> wait() => _done.future;
 
   @override
   Future<void> dispose() async {

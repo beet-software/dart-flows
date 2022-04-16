@@ -14,4 +14,5 @@
 
 ## 0.2.2
 
+- Add error handling
 - Fix flow: OneToManyFlow (change list of streams to stream of list)

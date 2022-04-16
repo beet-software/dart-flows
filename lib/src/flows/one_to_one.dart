@@ -1,8 +1,9 @@
 import 'dart:async';
 
 import '../models/async_snapshot.dart';
+import '../models/consumers.dart';
 import '../models/done_completer.dart';
-import '../models/value_consumer.dart';
+import '../utils.dart';
 import 'flow.dart';
 
 /// Stores a value [root] with its dependent [child].
@@ -19,13 +20,15 @@ class OneToOneValue<T, R> {
   String toString() => "OneToOneValue([$root]{$child})";
 }
 
-class _OneToOneCombinerCallback<T, R> {
+class _OneToOneFlowCallback<T, R> {
   final FutureOr<void> Function(T root) onRootEvent;
   final FutureOr<void> Function(T root, R child) onChildEvent;
+  final FutureOr<void> Function(P2CEventType, Object, [StackTrace?]) onError;
 
-  const _OneToOneCombinerCallback({
+  const _OneToOneFlowCallback({
     required this.onRootEvent,
     required this.onChildEvent,
+    required this.onError,
   });
 }
 
@@ -45,15 +48,17 @@ class OneToOneFlow<T, R> extends Flow {
   factory OneToOneFlow.lazy(
     Stream<T> stream, {
     required Stream<R> Function(T) mapping,
-    required ValueConsumer<OneToOneValue<T, R>> consumer,
+    required ValueConsumer<OneToOneValue<T, R>> onValue,
+    ErrorConsumer<P2CEventType>? onError,
   }) {
     return OneToOneFlow._(
       stream: stream,
       mapping: mapping,
-      callback: _OneToOneCombinerCallback(
+      callback: _OneToOneFlowCallback(
         onRootEvent: (root) {},
         onChildEvent: (root, child) =>
-            consumer.apply(OneToOneValue(root: root, child: child)),
+            onValue.apply(OneToOneValue(root: root, child: child)),
+        onError: (type, e, [s]) => onError?.emit(type, e, s),
       ),
     );
   }
@@ -69,23 +74,25 @@ class OneToOneFlow<T, R> extends Flow {
   factory OneToOneFlow.eager(
     Stream<T> stream, {
     required Stream<R> Function(T) mapping,
-    required ValueConsumer<OneToOneValue<T, AsyncSnapshot<R>>> consumer,
+    required ValueConsumer<OneToOneValue<T, AsyncSnapshot<R>>> onValue,
+    ErrorConsumer<P2CEventType>? onError,
   }) {
     return OneToOneFlow._(
       stream: stream,
       mapping: mapping,
-      callback: _OneToOneCombinerCallback(
-        onRootEvent: (root) => consumer.apply(
+      callback: _OneToOneFlowCallback(
+        onRootEvent: (root) => onValue.apply(
             OneToOneValue(root: root, child: const AsyncSnapshot.waiting())),
-        onChildEvent: (root, child) => consumer
+        onChildEvent: (root, child) => onValue
             .apply(OneToOneValue(root: root, child: AsyncSnapshot.data(child))),
+        onError: (type, e, [s]) => onError?.emit(type, e, s),
       ),
     );
   }
 
   final Stream<T> stream;
   final Stream<R> Function(T) mapping;
-  final _OneToOneCombinerCallback<T, R>? callback;
+  final _OneToOneFlowCallback<T, R>? callback;
 
   /// Creates an [OneToOneFlow].
   ///
@@ -113,7 +120,7 @@ class _State<T, R> implements FlowState {
   _State({
     required Stream<T> stream,
     required Stream<R> Function(T) mapping,
-    _OneToOneCombinerCallback<T, R>? callback,
+    _OneToOneFlowCallback<T, R>? callback,
   }) {
     _subscription = stream.listen(
       (event) async {
@@ -121,13 +128,13 @@ class _State<T, R> implements FlowState {
         final Stream<R> nestedStream = mapping(event);
         await _nestedSubscription?.cancel();
         _nestedSubscription = nestedStream.listen(
-          (nestedEvent) async {
-            await callback?.onChildEvent(event, nestedEvent);
-          },
-          onDone: () => _done.childDone(),
+          (nestedEvent) => callback?.onChildEvent(event, nestedEvent),
+          onDone: () => _done.emit(P2CEventType.child),
+          onError: (e, s) => callback?.onError(P2CEventType.child, e, s),
         );
       },
-      onDone: () => _done.rootDone(),
+      onDone: () => _done.emit(P2CEventType.root),
+      onError: (e, s) => callback?.onError(P2CEventType.root, e, s),
     );
   }
 

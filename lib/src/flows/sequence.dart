@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../models/async_snapshot.dart';
-import '../models/value_consumer.dart';
+import '../models/consumers.dart';
 import 'flow.dart';
 
 class _SequenceFlowCallback<T> {

@@ -1,13 +1,18 @@
 import 'dart:async';
 
+import '../models/consumers.dart';
 import '../models/disposable.dart';
-import '../models/value_consumer.dart';
 
 /// Represents a flow.
 abstract class Flow {
-  static Stream<R> stream<R>(Flow Function(ValueConsumer<R>) builder) {
+  static Stream<R> stream<R>(
+    Flow Function(ValueConsumer<R>, ErrorConsumer<Object?>) builder,
+  ) {
     final StreamController<R> controller = StreamController();
-    final Flow flow = builder(ValueConsumer<R>.lambda(controller.add));
+    final Flow flow = builder(
+      ValueConsumer<R>.lambda(controller.add),
+      ErrorConsumer.lambda((_, e, [s]) => controller.addError(e, s)),
+    );
     final FlowState state = flow.start();
     state.wait().then((_) => controller.close());
     return controller.stream;

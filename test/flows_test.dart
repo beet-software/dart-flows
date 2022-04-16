@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flows/flows.dart';
 import 'package:flows/src/models/done_completer.dart';
+import 'package:flows/src/utils.dart';
 import 'package:test/test.dart';
 
 class _ValueStorage<T> {
@@ -16,17 +17,10 @@ class MockDoneCompleter implements DoneCompleter {
   final DoneCompleter _completer = DoneCompleter();
 
   @override
-  Future<void> rootDone() async {
-    _completer.rootDone();
-  }
-
-  @override
-  Future<void> childDone() async {
-    _completer.childDone();
-  }
-
-  @override
   Future<void> get future => _completer.future;
+
+  @override
+  Future<void> emit(P2CEventType type) async => _completer.emit(type);
 }
 
 void main() {
@@ -45,7 +39,7 @@ void main() {
       flow = OneToOneFlow<int, String>.lazy(
         outer.stream,
         mapping: (_) => inner.stream,
-        consumer: ValueConsumer.lambda((v) => storage.value = v),
+        onValue: ValueConsumer.lambda((v) => storage.value = v),
       ).start();
     });
 
@@ -126,7 +120,7 @@ void main() {
       flow = OneToOneFlow<int, String>.eager(
         outer.stream,
         mapping: (_) => inner.stream,
-        consumer: ValueConsumer.lambda((v) => storage.value = v),
+        onValue: ValueConsumer.lambda((v) => storage.value = v),
       ).start();
     });
 
@@ -210,7 +204,7 @@ void main() {
       flow = OneToManyFlow<int, String>.lazy(
         outer.stream,
         mapping: (_) => inner.stream,
-        consumer: ValueConsumer.lambda((v) => storage.value = v),
+        onValue: ValueConsumer.lambda((v) => storage.value = v),
       ).start();
     });
 
@@ -288,7 +282,7 @@ void main() {
       flow = OneToManyFlow<int, String>.eager(
         outer.stream,
         mapping: (_) => inner.stream,
-        consumer: ValueConsumer.lambda((v) => storage.value = v),
+        onValue: ValueConsumer.lambda((v) => storage.value = v),
       ).start();
     });
 
@@ -692,36 +686,36 @@ void main() {
 
     test('calling rootDone before childDone should complete', () async {
       expect(status, FutureCompletion.none);
-      await completer.rootDone();
+      await completer.emit(P2CEventType.root);
       expect(status, FutureCompletion.none);
-      await completer.childDone();
+      await completer.emit(P2CEventType.child);
       expect(status, FutureCompletion.success);
     });
     test('calling rootDone multiple times should not raise errors', () async {
       expect(status, FutureCompletion.none);
-      await completer.rootDone();
+      await completer.emit(P2CEventType.root);
       expect(status, FutureCompletion.none);
-      await completer.rootDone();
+      await completer.emit(P2CEventType.root);
       expect(status, FutureCompletion.none);
-      await completer.childDone();
+      await completer.emit(P2CEventType.child);
       expect(status, FutureCompletion.success);
     });
     test('calling childDone multiple times should not raise errors', () async {
       expect(status, FutureCompletion.none);
-      await completer.childDone();
+      await completer.emit(P2CEventType.child);
       expect(status, FutureCompletion.none);
-      await completer.rootDone();
+      await completer.emit(P2CEventType.root);
       expect(status, FutureCompletion.none);
-      await completer.childDone();
+      await completer.emit(P2CEventType.child);
       expect(status, FutureCompletion.success);
     });
     test('calling childDone after complete should not raise errors', () async {
       expect(status, FutureCompletion.none);
-      await completer.rootDone();
+      await completer.emit(P2CEventType.root);
       expect(status, FutureCompletion.none);
-      await completer.childDone();
+      await completer.emit(P2CEventType.child);
       expect(status, FutureCompletion.success);
-      await completer.childDone();
+      await completer.emit(P2CEventType.child);
       expect(status, FutureCompletion.success);
     });
   });
