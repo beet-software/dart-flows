@@ -11,3 +11,7 @@
 ## 0.2.1
 
 - Fix flow: ManyToManyFlow (change list of streams to stream of list)
+
+## 0.2.2
+
+- Fix flow: OneToManyFlow (change list of streams to stream of list)

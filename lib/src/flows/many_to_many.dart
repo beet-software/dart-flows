@@ -67,9 +67,9 @@ typedef ManyToManyValue<T, R> = List<OneToOneValue<T, R>>;
 /// The relationship is provided by [mapping]. When [stream] emits a list of M
 /// events, call [mapping] on it, which will create a list of N sub-streams for
 /// each event. When all sub-streams emit at least one value (generating M*N
-/// values), supply a [ManyToManyValue] with M [OneToManyValue] values, with their
-/// [OneToManyValue.parent] values as each event and their respective
-/// [OneToManyValue.children] as their respective sub-streams, in the same order
+/// values), supply a [ManyToManyValue] with M [SyncOneToManyValue] values, with their
+/// [SyncOneToManyValue.parent] values as each event and their respective
+/// [SyncOneToManyValue.children] as their respective sub-streams, in the same order
 /// as its originating streams.
 ///
 /// --------------------------
